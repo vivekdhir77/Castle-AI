@@ -120,34 +120,55 @@ def play_turn(player, distributed_cards, deck, pile):
             face_down_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_DOWN]
             if face_down_cards:
                 print("Playing with Face Down cards:")
-                random_card = random.choice(face_down_cards)
                 
-                # Check if the card can be played on the pile
-                can_play = True
-                if pile:
-                    top_card = pile[-1]
-                    if (RANK_ORDER[random_card['rank']] <= RANK_ORDER[top_card['rank']] and 
-                        random_card['rank'] not in ['10', '7', '2']):
-                        can_play = False
-                
-                # If can't play the card, add it to hand along with the pile
-                if not can_play:
-                    print(f"Face-down card {random_card['suit']} {random_card['rank']} cannot be played.")
-                    print(f"Must pick up the pile and the card.")
-                    distributed_cards[player].remove(random_card)  # Remove from face-down
-                    random_card['type'] = CARD_TYPE_IN_HAND      # Change type to in hand
-                    pile.append(random_card)                      # Add to pile before picking up
-                    pile, distributed_cards[player] = pick_up_pile(pile, distributed_cards[player])
-                else:
-                    distributed_cards[player].remove(random_card)
-                    pile.append({"suit": random_card['suit'], "rank": random_card['rank'], "type": CARD_TYPE_PILE})
-                    print(f"{player} played face-down card: {random_card['suit']} {random_card['rank']}")
-                
-                # Handle special cards (10, 2)
-                if can_play and random_card['rank'] == '10':
-                    pile.clear()
-                    print("Pile flushed!")
-                
+                while face_down_cards:  # Loop to allow multiple attempts if a 2 is drawn
+                    random_card = random.choice(face_down_cards)
+                    
+                    # Check if the card can be played on the pile
+                    can_play = True
+                    if pile:
+                        top_card = pile[-1]
+                        if (RANK_ORDER[random_card['rank']] <= RANK_ORDER[top_card['rank']] and 
+                            random_card['rank'] not in ['10', '7']):
+                            can_play = False
+                    
+                    # If the card is a 2, remove it from distributed cards and add to pile, then choose another card
+                    if random_card['rank'] == '2':
+                        distributed_cards[player].remove(random_card)
+                        pile.append({"suit": random_card['suit'], "rank": random_card['rank'], "type": CARD_TYPE_PILE})
+                        print(f"{player} played face-down card: {random_card['suit']} {random_card['rank']}")
+                        
+                        # Check if the player has finished all their cards
+                        if not distributed_cards[player]:
+                            print(f"{player} has won the game!")
+                            return  # End the game if the player has won
+                        
+                        # Choose another card from face-down cards
+                        face_down_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_DOWN]
+                        continue  # Continue the loop to pick another card
+                        
+                    elif not can_play:
+                        print(f"Face-down card {random_card['suit']} {random_card['rank']} cannot be played.")
+                        print(f"Must pick up the pile and the card.")
+                        distributed_cards[player].remove(random_card)  # Remove from face-down
+                        random_card['type'] = CARD_TYPE_IN_HAND      # Change type to in hand
+                        pile.append(random_card)                      # Add to pile before picking up
+                        pile, distributed_cards[player] = pick_up_pile(pile, distributed_cards[player])
+                        break  # Exit the loop after picking up the pile
+                    else:
+                        distributed_cards[player].remove(random_card)
+                        pile.append({"suit": random_card['suit'], "rank": random_card['rank'], "type": CARD_TYPE_PILE})
+                        print(f"{player} played face-down card: {random_card['suit']} {random_card['rank']}")
+                        
+                        # If the card is a 10, give the player another chance to play
+                        if random_card['rank'] == '10':
+                            pile.clear()
+                            print("Pile flushed!")
+                            print(f"{player} played a 10! You get another chance to play.")
+                            face_down_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_DOWN]
+                            continue  # Continue the loop to pick another card
+                        break  # Exit the loop after a valid play
+
                 pprint(distributed_cards)
                 return
     else:
