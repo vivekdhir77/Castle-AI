@@ -99,45 +99,111 @@ def initialize_player_cards(distributed_cards):
                 card["type"] = CARD_TYPE_FACE_DOWN
 
 def play_turn(player, distributed_cards, deck, pile):
+    """
+    Manages a single turn for the given player.
+    Handles playing cards based on their type and game rules.
+    """
     # Show possible cards the player can play
     print(f"\n{player}'s possible cards to play:")
-    possible_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_IN_HAND]
-    for card in possible_cards:
-        print(f"{card['suit']} {card['rank']}")
-
-    # Show the top card of the deck
-    if deck:
-        top_deck_card = deck[0]
-        print(f"Top card of the deck: {top_deck_card['suit']} {top_deck_card['rank']}")
+    in_hand_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_IN_HAND]
+    
+    # If no in-hand cards, face-up cards become playable
+    if not in_hand_cards:
+        face_up_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_UP]
+        if face_up_cards:
+            print("Playing with Face Up cards:")
+            for card in face_up_cards:
+                print(f"{card['suit']} {card['rank']}")
+            possible_cards = face_up_cards
+        else:
+            # If no face-up cards either, play with face-down cards
+            face_down_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_DOWN]
+            if face_down_cards:
+                print("Playing with Face Down cards:")
+                random_card = random.choice(face_down_cards)
+                
+                # Check if the card can be played on the pile
+                can_play = True
+                if pile:
+                    top_card = pile[-1]
+                    if (RANK_ORDER[random_card['rank']] <= RANK_ORDER[top_card['rank']] and 
+                        random_card['rank'] not in ['10', '7', '2']):
+                        can_play = False
+                
+                # If can't play the card, add it to hand along with the pile
+                if not can_play:
+                    print(f"Face-down card {random_card['suit']} {random_card['rank']} cannot be played.")
+                    print(f"Must pick up the pile and the card.")
+                    distributed_cards[player].remove(random_card)  # Remove from face-down
+                    random_card['type'] = CARD_TYPE_IN_HAND      # Change type to in hand
+                    pile.append(random_card)                      # Add to pile before picking up
+                    pile, distributed_cards[player] = pick_up_pile(pile, distributed_cards[player])
+                else:
+                    distributed_cards[player].remove(random_card)
+                    pile.append({"suit": random_card['suit'], "rank": random_card['rank'], "type": CARD_TYPE_PILE})
+                    print(f"{player} played face-down card: {random_card['suit']} {random_card['rank']}")
+                
+                # Handle special cards (10, 2)
+                if can_play and random_card['rank'] == '10':
+                    pile.clear()
+                    print("Pile flushed!")
+                
+                pprint(distributed_cards)
+                return
     else:
-        print("The deck is empty.")
+        for card in in_hand_cards:
+            print(f"{card['suit']} {card['rank']}")
+        possible_cards = in_hand_cards
+
+    # Show the top card of the pile
+    if pile:
+        top_pile_card = pile[-1]
+        print(f"Top card of the pile: {top_pile_card['suit']} {top_pile_card['rank']} length: {len(pile)}")
+    else:
+        print("The pile is empty.")
+
+    # Add check for seven rule
+    seven_rule_active = False
+    if pile and pile[-1]['rank'] == '7':
+        seven_rule_active = True
+        print("Seven rule is active! Must play 7 or lower.")
 
     while True:  # Loop until a valid turn is played
         print(f"\n{player}'s turn:")
-        print("Choose cards to play (suit and rank) or pick up the pile:")
-        p_suit = input("Enter the suit you want to throw (or type 'pick up pile'): ")
-        
+        print("Choose cards to play (suit and rank) or type 'pick up pile':")
+        p_suit = input("Enter the suit you want to throw (or type 'pick up pile'): ").strip()
+
         if p_suit.lower() == 'pick up pile':
+            if not pile:
+                print("Cannot pick up pile because it's empty.")
+                continue
             pile, distributed_cards[player] = pick_up_pile(pile, distributed_cards[player])
             print(f"{player} picked up the pile.")
-            break  # End the turn after picking up the pile
+            break
 
-        p_rank = input("Enter the rank you want to throw: ")
+        p_rank = input("Enter the rank you want to throw: ").strip()
 
-        # Find all cards of the chosen rank in hand
-        chosen_cards = [card for card in distributed_cards[player] if card['rank'] == p_rank and card['type'] == CARD_TYPE_IN_HAND]
+        # Find chosen cards based on current playable cards
+        if not in_hand_cards:
+            chosen_cards = [card for card in face_up_cards if card['rank'].lower() == p_rank.lower()]
+        else:
+            chosen_cards = [card for card in in_hand_cards if card['rank'].lower() == p_rank.lower()]
 
         if not chosen_cards:
-            print("Invalid card type. Please try again.")
-            continue  # try again
+            print("Invalid card choice. Please try again.")
+            continue
 
         # Check if the card can be played on the pile
         if pile:
             top_card = pile[-1]
-            if (RANK_ORDER[p_rank] <= RANK_ORDER[top_card['rank']] and 
-                p_rank not in ['10', '7', '2']):
+            # Add seven rule check
+            if seven_rule_active and RANK_ORDER[p_rank.capitalize()] > 7:
+                print("Invalid move: Must play a 7 or lower due to seven rule. Please try again.")
+                continue
+            elif (RANK_ORDER[p_rank.capitalize()] <= RANK_ORDER[top_card['rank']] and 
+                  p_rank.capitalize() not in ['10', '7', '2']):
                 print("Invalid move: You can only throw a higher rank card or a special card (10, 7, 2). Please try again.")
-                continue  # try again
+                continue
 
         # Remove chosen cards from player's hand and add to pile
         for card in chosen_cards:
@@ -146,41 +212,35 @@ def play_turn(player, distributed_cards, deck, pile):
             print(f"{player} played: {card['suit']} {card['rank']}")
 
         # Special rule for '10': Flush the pile
-        if p_rank == '10':
+        if p_rank.capitalize() == '10':
             pile.clear()
             print("Pile flushed! You can throw another card.")
-            continue  # Allow the player to throw another card
+            continue
 
-        # Rule for '2': Allow another card
-        if p_rank == '2':
-            print("You can throw another card.")
-            continue  # Allow the player to throw another card
+        # Special rule for '2': Reset pile and allow another card
+        if p_rank.capitalize() == '2':
+            pile.clear()
+            print("Pile reset with 2! You can throw another card.")
+            continue
 
-        # Check if the deck is empty
-        if not deck:
-            print("Deck is empty. Proceeding with face-up cards.")
-            # Play face-up cards
-            face_up_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_UP]
-            if face_up_cards:
-                for card in face_up_cards:
-                    distributed_cards[player].remove(card)
-                    pile.append({"suit": card['suit'], "rank": card['rank'], "type": CARD_TYPE_PILE})
-                    print(f"{player} played: {card['suit']} {card['rank']}")
-            else:
-                # Play face-down cards randomly
-                face_down_cards = [card for card in distributed_cards[player] if card['type'] == CARD_TYPE_FACE_DOWN]
-                if face_down_cards:
-                    random_card = random.choice(face_down_cards)
-                    distributed_cards[player].remove(random_card)
-                    pile.append({"suit": random_card['suit'], "rank": random_card['rank'], "type": CARD_TYPE_PILE})
-                    print(f"{player} played face-down card: {random_card['suit']} {random_card['rank']}")
+        # Special rule for '7': Set flag for next player
+        if p_rank.capitalize() == '7':
+            print("Seven played! Next player must play 7 or lower.")
 
-        else:
-            print(f"{player} draws a card:")
+        # If deck is not empty, draw cards
+        if deck:
             deck, distributed_cards[player] = pick_up_from_deck(deck, distributed_cards[player])
-            pprint(distributed_cards)
         
+        pprint(distributed_cards)
         break
+
+    # Check for win condition
+    remaining_cards = [card for card in distributed_cards[player]]
+    if not remaining_cards:
+        print(f"{player} has won the game!")
+        return True
+
+    return False
 
 if __name__ == "__main__":
     try:
@@ -211,8 +271,15 @@ if __name__ == "__main__":
     pile = []
 
     # Example gameplay actions
-    for turn in range(1, 6):  # Simulate 5 turns
-        play_turn(f"Player {((turn - 1) % players) + 1}", distributed_cards, deck, pile)
+    game_over = False
+    current_player = 1
+
+    while not game_over:
+        current_player_name = f"Player {current_player}"
+        game_over = play_turn(current_player_name, distributed_cards, deck, pile)
+        
+        if not game_over:
+            current_player = 2 if current_player == 1 else 1  # Switch players
 
     # # Main game loop placeholder
     # while True:
