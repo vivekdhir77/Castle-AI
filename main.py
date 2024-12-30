@@ -128,7 +128,7 @@ def play_turn(player, distributed_cards, deck, pile):
                     can_play = True
                     if pile:
                         top_card = pile[-1]
-                        if (RANK_ORDER[random_card['rank']] <= RANK_ORDER[top_card['rank']] and 
+                        if (RANK_ORDER[random_card['rank']] < RANK_ORDER[top_card['rank']] and 
                             random_card['rank'] not in ['10', '7']):
                             can_play = False
                     
@@ -221,7 +221,7 @@ def play_turn(player, distributed_cards, deck, pile):
             if seven_rule_active and RANK_ORDER[p_rank.capitalize()] > 7:
                 print("Invalid move: Must play a 7 or lower due to seven rule. Please try again.")
                 continue
-            elif (RANK_ORDER[p_rank.capitalize()] <= RANK_ORDER[top_card['rank']] and 
+            elif (RANK_ORDER[p_rank.capitalize()] < RANK_ORDER[top_card['rank']] and 
                   p_rank.capitalize() not in ['10', '7', '2']):
                 print("Invalid move: You can only throw a higher rank card or a special card (10, 7, 2). Please try again.")
                 continue
