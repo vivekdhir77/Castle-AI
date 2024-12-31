@@ -163,8 +163,15 @@ def play_turn(player, distributed_cards, deck, pile, is_computer=False):
         game_over = play_face_down_card(player, distributed_cards, pile)
     else:
         if is_computer:
-            # TODO: Implement computer logic here
-            pass
+            # Computer logic: randomly play a valid card
+            valid_playable_cards = [card for card in playable_cards if is_valid_play(card['rank'], pile)]
+            if valid_playable_cards:
+                card = random.choice(valid_playable_cards)
+                play_card(player, card, distributed_cards, pile)
+            else:
+                print(f"{player} cannot play any cards and must pick up the pile.")
+                pile, distributed_cards[player] = pick_up_pile(pile, distributed_cards[player])
+                return False
         else:
             game_over = handle_human_turn(player, distributed_cards, pile, playable_cards)
     
