@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Game Overview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Card Game Overview</h1>
+
+<p>This document provides an overview of the card game implemented in <code>main.py</code>. The game allows players to play cards based on specific rules and conditions.</p>
+
+<h2>Key Components</h2>
+
+<h3>Constants</h3>
+<p>The game defines several constants to manage card types and ranks:</p>
+<pre><code>CARD_TYPE_IN_HAND = "In Hand"
+CARD_TYPE_FACE_UP = "Face Up"
+CARD_TYPE_FACE_DOWN = "Face Down"
+CARD_TYPE_PILE = "Pile"</code></pre>
+
+<h3>Functions</h3>
+<ul>
+    <li><code>get_playable_cards(player_cards)</code>: Returns the current playable cards based on their type (hand, face up, face down).</li>
+    <li><code>is_valid_play(card_rank, pile, seven_rule_active=False)</code>: Validates if a card can be played on the current pile.</li>
+    <li><code>handle_special_card(rank, pile)</code>: Handles the effects of special cards (2, 7, 10) and determines if another turn is allowed.</li>
+    <li><code>play_card(player, card, distributed_cards, pile)</code>: Plays a card and adds it to the pile, invoking special card effects if applicable.</li>
+    <li><code>play_face_down_card(player, distributed_cards, pile)</code>: Manages the playing of face-down cards and checks for game-ending conditions.</li>
+    <li><code>handle_human_turn(player, distributed_cards, pile, playable_cards)</code>: Manages the turn of a human player, including card selection and play validation.</li>
+    <li><code>play_turn(player, distributed_cards, deck, pile, is_computer=False)</code>: Main function that handles both human and computer turns.</li>
+    <li>Utility functions for distributing cards, picking up from the deck, and initializing player cards.</li>
+</ul>
+
+<h3>Game Flow</h3>
+<p>The game starts by loading a deck of cards from a JSON file. Players are then distributed a set number of cards, and the game enters a loop where each player's turn is handled until the game is over.</p>
+
+<h3>Special Features</h3>
+<ul>
+    <li>Players can play special cards that affect the game state, such as flushing the pile or allowing additional plays.</li>
+    <li>After three consecutive plays without cards in hand, players can draw from the deck or convert face-up cards to hand cards.</li>
+    <li>The game supports both human vs. human and human vs. computer modes.</li>
+</ul>
+
+<h2>Conclusion</h2>
+<p>This card game implementation in Python provides a fun and interactive way to play a card game with specific rules and conditions. The code is structured to allow easy modifications and enhancements for future development.</p>
+
+</body>
+</html>
