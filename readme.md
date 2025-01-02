@@ -1,6 +1,9 @@
 # Palace Card Game Implementation
+[![Training and Test Run](https://img.youtube.com/vi/L6xfh8nBypk/0.jpg)](https://youtu.be/L6xfh8nBypk)  
+[Watch the Training and Test Run Video](https://youtu.be/L6xfh8nBypk)
 
-![Training and Test Run](Train_Text.mov)
+
+Detailed explanation of the code is available at: https://castle-ai-eight.vercel.app/
 
 This repository contains two implementations of the Palace card game: a traditional player-vs-computer version (`main.py`) and an AI-powered version using Deep Q-Learning (`palace_dqn.py`).
 
