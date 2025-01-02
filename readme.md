@@ -1,5 +1,7 @@
 # Palace Card Game Implementation
 
+![Training and Test Run](Train_Text.mov)
+
 This repository contains two implementations of the Palace card game: a traditional player-vs-computer version (`main.py`) and an AI-powered version using Deep Q-Learning (`palace_dqn.py`).
 
 ## Overview
