@@ -53,8 +53,23 @@ CARD_TYPE_PILE = "Pile"</code></pre>
     <li>Utility functions for distributing cards, picking up from the deck, and initializing player cards.</li>
 </ul>
 
-<h3>Game Flow</h3>
-<p>The game starts by loading a deck of cards from a JSON file. Players are then distributed a set number of cards, and the game enters a loop where each player's turn is handled until the game is over.</p>
+<h3>Game Mechanics</h3>
+<p>The game is structured around a reinforcement learning environment where the following components are defined:</p>
+
+<h4>States</h4>
+<p>The state of the game is represented as a numerical array that includes the ranks of the cards in hand and face-up for both players, as well as the rank of the top card in the pile. This allows the agents to assess the current game situation and make decisions based on the available information.</p>
+
+<h4>Action Space</h4>
+<p>The action space consists of the indices of playable cards. Each player can choose to play one of their playable cards or pick up the pile if no valid moves are available. The action space is dynamic and changes based on the cards in hand.</p>
+
+<h4>Transition Function</h4>
+<p>The transition function defines how the game state changes in response to an action taken by a player. When a player plays a card, the state is updated to reflect the new configuration of cards in hand, the pile, and the current player's turn. If a player cannot play a card, they pick up the pile, which also alters the state.</p>
+
+<h4>Code Logic</h4>
+<p>The code implements the game logic through various functions and classes. The <code>CardGameEnv</code> class encapsulates the game state and provides methods for managing player turns, validating plays, and updating the game state. The <code>DQNAgent</code> class represents the reinforcement learning agent that learns to play the game by interacting with the environment.</p>
+
+<h4>Game Flow</h4>
+<p>The game starts by initializing the environment and distributing cards to players. Players take turns playing cards based on the rules defined in the game. The game continues until one player has no cards left or a specific game-ending condition is met.</p>
 
 <h3>Special Features</h3>
 <ul>

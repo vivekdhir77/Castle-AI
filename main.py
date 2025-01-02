@@ -157,7 +157,7 @@ def play_turn(player, distributed_cards, deck, pile, is_computer=False):
         print(f"Top card: {pile[-1]['suit']} {pile[-1]['rank']} (Pile size: {len(pile)})")
     else:
         print("Pile is empty")
-    
+    game_over = False
     # Handle face down cards
     if card_type == CARD_TYPE_FACE_DOWN:
         game_over = play_face_down_card(player, distributed_cards, pile)
