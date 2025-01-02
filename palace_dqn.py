@@ -115,40 +115,43 @@ class CardGameEnv:
         self.game_over = False
         self.seven_rule_active = False
         self.max_hand_size = 3
+        self.max_action_size = 3  # Maximum number of cards that can be played at once
 
     def get_state(self):
         player1 = self.distributed_cards["Player 1"]
         player2 = self.distributed_cards["Player 2"]
 
-        def encode_cards(cards, count=3):
-            encoded = []
+        def encode_cards(cards):
+            # Create a list of 15 zeros (one for each possible rank 2-15)
+            rank_counts = [0] * 15  
+            
+            # Count occurrences of each rank
             for card in cards:
                 rank = card['rank']
-                rank_value = RANK_ORDER.get(rank, 0)
-                if rank_value == 0:
-                    print(f"Warning: Undefined rank '{rank}' encountered.")
-                encoded.append(rank_value)
-                if len(encoded) >= count:
-                    break
-            encoded += [0] * (count - len(encoded))
-            return encoded
+                rank_value = RANK_ORDER.get(rank, 0) - 1  # Subtract 1 to use 0-based indexing
+                if rank_value >= 0:
+                    rank_counts[rank_value] += 1
+                    
+            return rank_counts
 
-        player1_hand = encode_cards(
-            [card for card in player1 if card['type'] == CARD_TYPE_IN_HAND], self.max_hand_size)
-        player1_face_up = encode_cards(
-            [card for card in player1 if card['type'] == CARD_TYPE_FACE_UP], self.max_hand_size)
-
-        player2_hand = encode_cards(
-            [card for card in player2 if card['type'] == CARD_TYPE_IN_HAND], self.max_hand_size)
-        player2_face_up = encode_cards(
-            [card for card in player2 if card['type'] == CARD_TYPE_FACE_UP], self.max_hand_size)
+        # Encode all cards by their type
+        player1_hand = encode_cards([card for card in player1 if card['type'] == CARD_TYPE_IN_HAND])
+        player1_face_up = encode_cards([card for card in player1 if card['type'] == CARD_TYPE_FACE_UP])
+        player1_face_down = encode_cards([card for card in player1 if card['type'] == CARD_TYPE_FACE_DOWN])
+        
+        player2_hand = encode_cards([card for card in player2 if card['type'] == CARD_TYPE_IN_HAND])
+        player2_face_up = encode_cards([card for card in player2 if card['type'] == CARD_TYPE_FACE_UP])
+        player2_face_down = encode_cards([card for card in player2 if card['type'] == CARD_TYPE_FACE_DOWN])
 
         pile_top = RANK_ORDER[self.pile[-1]['rank']] if self.pile else 0
 
-        state = np.array(player1_hand + player1_face_up +
-                        player2_hand + player2_face_up + [pile_top])
+        # Combine all state components
+        state = np.array(
+            player1_hand + player1_face_up + player1_face_down +
+            player2_hand + player2_face_up + player2_face_down + 
+            [pile_top]
+        )
 
-        print(f"State: {state}, Size: {len(state)}")
         return state
 
     def step(self, action):
@@ -156,16 +159,15 @@ class CardGameEnv:
         player_cards = self.distributed_cards[player_key]
         playable_cards, card_type = get_playable_cards(player_cards, self.seven_rule_active)
 
+        # Ensure action is within bounds of playable cards
+        action = action % len(playable_cards) if playable_cards else 0
+
         if not playable_cards:
             print(f"{player_key} cannot play and picks up the pile.")
             self.pile, player_cards = pick_up_pile(self.pile, player_cards)
             self.distributed_cards[player_key] = player_cards
             self.switch_player()
             return self.get_state(), -10, False
-
-        if action >= len(playable_cards):
-            print(f"Invalid action by {player_key}: {action}")
-            return self.get_state(), -10, True
 
         chosen_card = playable_cards[action]
         valid = is_valid_play(
@@ -180,7 +182,7 @@ class CardGameEnv:
 
         self.play_card(player_key, chosen_card)
 
-        if len(player_cards) == 0 and not any(card['type'] in [CARD_TYPE_FACE_UP, CARD_TYPE_FACE_DOWN] for card in player_cards):
+        if len(self.distributed_cards[player_key]) == 0:
             reward = 10
             self.game_over = True
             return self.get_state(), reward, self.game_over
@@ -308,8 +310,8 @@ if __name__ == "__main__":
 
     env = CardGameEnv(distributed_cards, deck, pile)
     state = env.reset()
-    state_size = len(state)
-    action_size = 15
+    state_size = 91  # (15 ranks * 6 card types) + 1 pile top card
+    action_size = 3  # Maximum number of cards that can be played at once
 
     agent1 = DQNAgent(state_size, action_size)
     agent2 = DQNAgent(state_size, action_size)
@@ -345,7 +347,7 @@ if __name__ == "__main__":
 
         agent1.replay(batch_size)
         agent2.replay(batch_size)
-
+    # exit()
     print("\n=== Testing: Agents Playing Against Each Other ===\n")
 
     agent1.epsilon = agent1.epsilon_min
@@ -370,7 +372,28 @@ if __name__ == "__main__":
         state = next_state
 
         if done:
-            winner = "Player 1" if env.current_player == 1 else "Player 2"
-            print(f"Game Over! {winner} wins!")
+            winner = "Player 2" if env.current_player == 1 else "Player 2"
+            loser = "Player 1" if winner == "Player 1" else "Player 1"
+            
+            print(f"\nGame Over! {winner} wins!")
+            print(f"\nReason: {winner} successfully played all their cards:")
+            print(f"- No cards in hand")
+            print(f"- No face-up cards")
+            print(f"- No face-down cards")
+            
+            print(f"\n{loser}'s remaining cards:")
+            loser_cards = env.distributed_cards[loser]
+            hand_cards = [f"{c['rank']} of {c['suit']}" for c in loser_cards if c['type'] == CARD_TYPE_IN_HAND]
+            face_up_cards = [f"{c['rank']} of {c['suit']}" for c in loser_cards if c['type'] == CARD_TYPE_FACE_UP]
+            face_down_cards = [f"{c['rank']} of {c['suit']}" for c in loser_cards if c['type'] == CARD_TYPE_FACE_DOWN]
+            
+            if hand_cards:
+                print("Hand cards:", ", ".join(hand_cards))
+            if face_up_cards:
+                print("Face-up cards:", ", ".join(face_up_cards))
+            if face_down_cards:
+                print("Face-down cards:", ", ".join(face_down_cards))
+            
+            print("\nFinal game state:")
             pprint_distributed_cards(env.distributed_cards)
             break

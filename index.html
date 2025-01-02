@@ -28,58 +28,183 @@
 </head>
 <body>
 
-<h1>Card Game Overview</h1>
+<h1>Palace Card Game with AI</h1>
 
-<p>This document provides an overview of the card game implemented in <code>main.py</code>. The game allows players to play cards based on specific rules and conditions.</p>
-
-<h2>Key Components</h2>
-
-<h3>Constants</h3>
-<p>The game defines several constants to manage card types and ranks:</p>
-<pre><code>CARD_TYPE_IN_HAND = "In Hand"
-CARD_TYPE_FACE_UP = "Face Up"
-CARD_TYPE_FACE_DOWN = "Face Down"
-CARD_TYPE_PILE = "Pile"</code></pre>
-
-<h3>Functions</h3>
+<h3>1. State Representation and Encoding</h3>
+<p>The game's state is encapsulated within a numerical vector of dimensionality 91. This vector comprehensively represents the current configuration of the game, capturing the essential elements required for decision-making by the AI agent. Specifically, the state vector comprises:</p>
 <ul>
-    <li><code>get_playable_cards(player_cards)</code>: Returns the current playable cards based on their type (hand, face up, face down).</li>
-    <li><code>is_valid_play(card_rank, pile, seven_rule_active=False)</code>: Validates if a card can be played on the current pile.</li>
-    <li><code>handle_special_card(rank, pile)</code>: Handles the effects of special cards (2, 7, 10) and determines if another turn is allowed.</li>
-    <li><code>play_card(player, card, distributed_cards, pile)</code>: Plays a card and adds it to the pile, invoking special card effects if applicable.</li>
-    <li><code>play_face_down_card(player, distributed_cards, pile)</code>: Manages the playing of face-down cards and checks for game-ending conditions.</li>
-    <li><code>handle_human_turn(player, distributed_cards, pile, playable_cards)</code>: Manages the turn of a human player, including card selection and play validation.</li>
-    <li><code>play_turn(player, distributed_cards, deck, pile, is_computer=False)</code>: Main function that handles both human and computer turns.</li>
-    <li>Utility functions for distributing cards, picking up from the deck, and initializing player cards.</li>
+    <li>15 dimensions representing each card type (In Hand, Face Up, Face Down) for Player 1.</li>
+    <li>15 dimensions representing each card type (In Hand, Face Up, Face Down) for Player 2.</li>
+    <li>15 dimensions for the top card of the pile.</li>
+    <li>1 dimension indicating the status of special rules (e.g., Seven Rule).</li>
 </ul>
 
-<h3>Game Mechanics</h3>
-<p>The game is structured around a reinforcement learning environment where the following components are defined:</p>
+<p>The state encoding follows this structure:</p>
+<pre>
+State vector = [
+    P1_hand_encoding[15],     // Player 1 hand cards
+    P1_faceup_encoding[15],   // Player 1 face-up cards
+    P1_facedown_encoding[15], // Player 1 face-down cards
+    P2_hand_encoding[15],     // Player 2 hand cards
+    P2_faceup_encoding[15],   // Player 2 face-up cards
+    P2_facedown_encoding[15], // Player 2 face-down cards
+    pile_top[1],               // Top card rank
+    seven_rule_active[1]       // Active status of Seven Rule
+]
+</pre>
 
-<h4>States</h4>
-<p>The state of the game is represented as a numerical array that includes the ranks of the cards in hand and face-up for both players, as well as the rank of the top card in the pile. This allows the agents to assess the current game situation and make decisions based on the available information.</p>
-
-<h4>Action Space</h4>
-<p>The action space consists of the indices of playable cards. Each player can choose to play one of their playable cards or pick up the pile if no valid moves are available. The action space is dynamic and changes based on the cards in hand.</p>
-
-<h4>Transition Function</h4>
-<p>The transition function defines how the game state changes in response to an action taken by a player. When a player plays a card, the state is updated to reflect the new configuration of cards in hand, the pile, and the current player's turn. If a player cannot play a card, they pick up the pile, which also alters the state.</p>
-
-<h4>Code Logic</h4>
-<p>The code implements the game logic through various functions and classes. The <code>CardGameEnv</code> class encapsulates the game state and provides methods for managing player turns, validating plays, and updating the game state. The <code>DQNAgent</code> class represents the reinforcement learning agent that learns to play the game by interacting with the environment.</p>
-
-<h4>Game Flow</h4>
-<p>The game starts by initializing the environment and distributing cards to players. Players take turns playing cards based on the rules defined in the game. The game continues until one player has no cards left or a specific game-ending condition is met.</p>
-
-<h3>Special Features</h3>
+<h3>2. Neural Network Architecture</h3>
+<p>The Deep Q-Network (DQN) employed in this implementation consists of a three-layer neural network designed to approximate the Q-value function, which estimates the expected rewards of actions taken in particular states. The architecture is as follows:</p>
 <ul>
-    <li>Players can play special cards that affect the game state, such as flushing the pile or allowing additional plays.</li>
-    <li>After three consecutive plays without cards in hand, players can draw from the deck or convert face-up cards to hand cards.</li>
-    <li>The game supports both human vs. human and human vs. computer modes.</li>
+    <li><strong>Input Layer:</strong> 91 neurons corresponding to the state vector dimensions.</li>
+    <li><strong>Hidden Layer 1:</strong> 128 neurons utilizing the Rectified Linear Unit (ReLU) activation function to introduce non-linearity.</li>
+    <li><strong>Hidden Layer 2:</strong> 64 neurons with ReLU activation to further capture complex patterns.</li>
+    <li><strong>Output Layer:</strong> 3 neurons representing the Q-values for each possible action (e.g., play a card from hand, face-up, or face-down).</li>
 </ul>
 
-<h2>Conclusion</h2>
-<p>This card game implementation in Python provides a fun and interactive way to play a card game with specific rules and conditions. The code is structured to allow easy modifications and enhancements for future development.</p>
+<h3>3. Reinforcement Learning Parameters</h3>
+<p>The training process is governed by several hyperparameters critical to the efficacy and stability of the learning algorithm:</p>
+<ul>
+    <li><strong>Learning Rate (α):</strong> Set at 0.001, this parameter controls the extent to which newly acquired information overrides old information.</li>
+    <li><strong>Discount Factor (γ):</strong> With a value of 0.99, this determines the importance of future rewards versus immediate rewards.</li>
+    <li><strong>Initial Exploration Rate (ε):</strong> Initialized at 1.0 to prioritize exploration in the early stages of training.</li>
+    <li><strong>Exploration Decay Rate:</strong> A decay rate of 0.995 gradually reduces exploration in favor of exploitation as the agent learns.</li>
+    <li><strong>Minimum Exploration Rate:</strong> Capped at 0.01 to ensure a baseline level of exploration is maintained.</li>
+</ul>
+
+<h3>4. Action Space and Decision Making</h3>
+<p>In each turn, the AI agent selects an action from the available action space, which consists of playing a card from one of the three categories: In Hand, Face Up, or Face Down. The validity of an action is determined based on the game's rules, such as matching or exceeding the rank of the top pile card or playing special cards like '2', '7', or 'Joker'. The DQN predicts the Q-values for each possible action, allowing the agent to select the action with the highest expected reward.</p>
+
+<h3>5. Reward Structure and Learning Objectives</h3>
+<p>The reinforcement learning framework is augmented with a reward system designed to incentivize desirable behaviors and discourage suboptimal actions:</p>
+<ul>
+    <li><strong>+10 points:</strong> Awarded for winning the game by successfully playing all cards.</li>
+    <li><strong>+1 point:</strong> Granted for making a valid play, encouraging consistent adherence to game rules.</li>
+    <li><strong>-5 points:</strong> Penalized for attempting an invalid play, promoting rule compliance.</li>
+    <li><strong>-10 points:</strong> Imposed for having to pick up the pile, discouraging forced losses.</li>
+</ul>
+
+<h3>6. The Bellman Equation and Q-Learning</h3>
+<p>The Bellman Equation serves as the foundation for updating the Q-values within the DQN. It formalizes the relationship between the current Q-value and the expected future rewards:</p>
+<pre>
+Q(state, action) = reward + γ * max(Q(next_state, all actions))
+</pre>
+<p>This recursive formula allows the agent to iteratively update its value estimates, balancing immediate rewards with long-term gains. For instance, playing a '2' might yield an immediate reward of +1 and facilitate future rewards by clearing the pile, resulting in a higher cumulative Q-value.</p>
+
+<h3>7. Deep Q-Network (DQN) Implementation</h3>
+<p>The `palace_dqn.py` script encapsulates the entire AI implementation using reinforcement learning principles. Below is a detailed breakdown of its components:</p>
+
+<h4>7.1. Environment Setup</h4>
+<p>The `CardGameEnv` class models the game environment, managing the state transitions, rule enforcement, and reward assignments. Key functionalities include:</p>
+<ul>
+    <li><strong>State Encoding:</strong> Transforms the current game state into a numerical vector suitable for input into the neural network.</li>
+    <li><strong>Step Function:</strong> Executes an action, updates the game state, assigns rewards, and determines if the game has concluded.</li>
+    <li><strong>Special Card Handling:</strong> Implements the effects of playing special cards (e.g., '10' burns the pile, '2' resets it).</li>
+    <li><strong>Player Management:</strong> Manages turn-taking between players and handles the distribution of cards.</li>
+</ul>
+
+<h4>7.2. Agent Design</h4>
+<p>The `DQNAgent` class represents the AI agent, responsible for selecting actions, learning from experiences, and optimizing its policy:</p>
+<ul>
+    <li><strong>Neural Network:</strong> Built using PyTorch, the network approximates the Q-value function based on the current state.</li>
+    <li><strong>Experience Replay:</strong> Utilizes a memory buffer (`deque`) to store experiences and sample random minibatches for training, breaking the correlation between sequential data.</li>
+    <li><strong>Action Selection:</strong> Implements an ε-greedy policy, balancing exploration and exploitation based on the current value of ε.</li>
+    <li><strong>Training:</strong> The `replay` method updates the network weights using stochastic gradient descent and backpropagation, minimizing the mean squared error between predicted and target Q-values.</li>
+</ul>
+
+<h4>7.3. Training Process</h4>
+<p>The main execution block orchestrates the training of two agents (Player 1 and Player 2) over a specified number of episodes. During each episode:</p>
+<ul>
+    <li>The environment is reset, initializing a new game state.</li>
+    <li>Agents take turns selecting and executing actions based on their current policy.</li>
+    <li>Rewards are assigned based on the outcomes of actions, and experiences are stored in memory buffers.</li>
+    <li>Periodically, agents sample minibatches from their memories to perform learning updates, refining their Q-value approximations.</li>
+    <li>Post-training, the agents engage in a testing phase where exploration is minimized, and their learned policies are evaluated against each other.</li>
+</ul>
+
+<h3>8. Game Play Example</h3>
+<p>An illustrative example demonstrates the AI's decision-making process during gameplay:</p>
+<pre>
+Turn 1:
+- Top card: 6
+- Computer's hand: [King, 7, 2]
+- Computer evaluates:
+  * King → +1 point now, retains a high-value card for future plays
+  * 7 → +1 point now, imposes constraints on the next player's move
+  * 2 → +1 point now, clears the pile, potentially ending the turn
+- Computer selects: 2 (strategic choice to clear the pile and potentially gain more future rewards)
+
+Turn 2:
+- Fresh pile, computer can play any card
+- Computer plays: King (eliminates a high-value card, maintaining a stronger hand for subsequent turns)
+</pre>
+
+<h3>9. Training Process</h3>
+<p>The AI undergoes an extensive training regimen to hone its strategic capabilities:</p>
+<ol>
+    <li><strong>Initial Phase (First 100 Games):</strong> The agents engage in predominantly random actions, allowing them to explore the state and action spaces without bias.</li>
+    <li><strong>Intermediate Phase (500 Games):</strong> Agents begin to recognize and adopt fundamental strategies based on accumulated experiences and learned rewards.</li>
+    <li><strong>Advanced Phase (1000 Games):</strong> Agents exhibit proficient gameplay, leveraging sophisticated strategies and optimized decision-making processes developed through extensive training.</li>
+</ol>
+
+<h2>Technical Overview of `palace_dqn.py`</h2>
+<p>The `palace_dqn.py` script is the core component that enables the AI agents to learn and play the Palace Card Game effectively. Below is a comprehensive examination of its structure and functionalities:</p>
+
+<h3>1. Libraries and Dependencies</h3>
+<p>Standard libraries and frameworks integral to the implementation include:</p>
+<ul>
+    <li><strong>NumPy:</strong> Facilitates numerical operations and state vector manipulations.</li>
+    <li><strong>PyTorch:</strong> Provides tools for constructing and training neural networks.</li>
+    <li><strong>Collections (deque):</strong> Implements memory buffers for experience replay.</li>
+    <li><strong>Random:</strong> Enables stochastic processes such as shuffling the deck and action selection.</li>
+    <li><strong>JSON:</strong> Handles the loading of card data from external files.</li>
+</ul>
+
+<h3>2. Constants and Utility Functions</h3>
+<p>The script defines several constants and helper functions to manage game logic:</p>
+<ul>
+    <li><strong>Card Types:</strong> Enumerates the different categories of cards (In Hand, Face Up, Face Down, Pile).</li>
+    <li><strong>Rank Order:</strong> A dictionary mapping card ranks to their corresponding numerical values, facilitating comparison and validation of plays.</li>
+    <li><strong>get_playable_cards:</strong> Identifies and retrieves the set of playable cards based on their type and current game rules.</li>
+    <li><strong>is_valid_play:</strong> Determines the legitimacy of a proposed card play in the context of the game's current state.</li>
+    <li><strong>handle_special_card:</strong> Executes the specific effects associated with special cards, such as clearing the pile or enforcing play restrictions.</li>
+    <li><strong>distribute:</strong> Allocates cards to players, categorizing them appropriately and managing the deck.</li>
+    <li><strong>pick_up_pile:</strong> Manages the action of a player picking up the pile, transferring pile cards to the player's hand.</li>
+    <li><strong>pprint_distributed_cards:</strong> Provides a formatted display of distributed cards for debugging and verification purposes.</li>
+</ul>
+
+<h3>3. Environment Class: `CardGameEnv`</h3>
+<p>This class encapsulates the game environment, handling state management, action execution, and game progression:</p>
+<ul>
+    <li><strong>Initialization:</strong> Sets up the game with distributed cards, managing the deck, pile, current player, and game status.</li>
+    <li><strong>State Retrieval (`get_state`):</strong> Encodes the current game state into a numerical vector suitable for neural network input.</li>
+    <li><strong>Step Function (`step`):</strong> Processes an action taken by a player, updates the game state, assigns rewards, and determines if the game has concluded.</li>
+    <li><strong>Card Playing (`play_card`):</strong> Executes the logic for playing a card, including updating the pile and handling special card effects.</li>
+    <li><strong>Player Switching (`switch_player`):</strong> Alternates turns between players.</li>
+    <li><strong>Reset Function (`reset`):</strong> Initializes a new game, shuffling and distributing cards, and resetting game status flags.</li>
+</ul>
+
+<h3>4. Agent Class: `DQNAgent`</h3>
+<p>The `DQNAgent` class defines the AI agent's behavior, encompassing action selection, memory management, and learning:</p>
+<ul>
+    <li><strong>Initialization:</strong> Sets up neural network parameters, memory buffers, and exploration-exploitation dynamics.</li>
+    <li><strong>Model Building (`build_model`):</strong> Constructs the neural network architecture using PyTorch, adhering to the predefined layer structure.</li>
+    <li><strong>Memory Management (`remember`):</strong> Stores experiences in a deque to facilitate experience replay during training.</li>
+    <li><strong>Action Selection (`act`):</strong> Implements an ε-greedy policy to choose actions based on current Q-value predictions or random exploration.</li>
+    <li><strong>Training (`replay`):</strong> Processes minibatches from memory to perform gradient descent updates on the neural network, minimizing prediction errors.</li>
+</ul>
+
+<h3>5. Main Execution Flow</h3>
+<p>The script's main section orchestrates the interaction between the environment and the agents:</p>
+<ol>
+    <li><strong>Environment and Agent Initialization:</strong> Sets up the game environment and instantiates two DQN agents representing the players.</li>
+    <li><strong>Training Loop:</strong> Iterates over a defined number of episodes, during which agents play games, collect experiences, and update their neural networks through replay.</li>
+    <li><strong>Testing Phase:</strong> Post-training, the agents engage in a deterministic game (with exploration minimized) to evaluate their learned strategies against each other.</li>
+    <li><strong>Outcome Reporting:</strong> Displays the results of the test game, including the winner, reasons for victory, and the final state of each player's cards.</li>
+</ol>
+
+<p>The comprehensive design of `palace_dqn.py` ensures that the AI agents progressively improve their gameplay through iterative learning, leveraging neural networks to approximate optimal strategies within the Palace Card Game's framework.</p>
+
 
 </body>
 </html>
