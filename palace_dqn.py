@@ -5,6 +5,7 @@ import torch.optim as optim
 from collections import deque
 import random
 import json
+import os
 
 CARD_TYPE_IN_HAND = "In Hand"
 CARD_TYPE_FACE_UP = "Face Up"
@@ -303,6 +304,16 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def save_model(self, filename):
+        torch.save(self.model.state_dict(), filename)
+
+    def load_model(self, filename):
+        if os.path.isfile(filename):
+            self.model.load_state_dict(torch.load(filename))
+            self.model.eval()
+        else:
+            print("Model file not found.")
+
 if __name__ == "__main__":
     distributed_cards = {"Player 1": [], "Player 2": []}
     deck = []
@@ -315,6 +326,10 @@ if __name__ == "__main__":
 
     agent1 = DQNAgent(state_size, action_size)
     agent2 = DQNAgent(state_size, action_size)
+
+    # Load pre-trained model if available
+    agent1.load_model("agent1_model.pth")
+    agent2.load_model("agent2_model.pth")
 
     episodes = 1000
     batch_size = 32
@@ -397,3 +412,73 @@ if __name__ == "__main__":
             print("\nFinal game state:")
             pprint_distributed_cards(env.distributed_cards)
             break
+
+    # # Save the model after training
+    agent1.save_model("agent1_model.pth")
+    agent2.save_model("agent2_model.pth")
+
+    # # Human vs AI gameplay
+    # print("\n=== Human vs AI Game ===\n")
+    # state = env.reset()
+    # done = False
+
+    # while not done:
+    #     current_agent = agent1 if env.current_player == 1 else agent2
+    #     if env.current_player == 1:  # Human player
+    #         print("Your turn! Here are your playable cards:")
+    #         player_key = f"Player {env.current_player}"
+    #         player_cards = env.distributed_cards[player_key]
+    #         playable_cards, _ = get_playable_cards(player_cards, env.seven_rule_active)
+    #         for idx, card in enumerate(playable_cards):
+    #             print(f"{idx}: {card['rank']} of {card['suit']}")
+
+    #         action = int(input("Select the index of the card you want to play: "))
+    #     else:  # AI player
+    #         action = current_agent.act(state)
+
+    #     next_state, reward, done = env.step(action)
+    #     state = next_state
+
+    #     if done:
+    #         winner = "Player 1" if env.current_player == 1 else "Player 2"
+    #         print(f"\nGame Over! {winner} wins!")
+    #         break
+
+    # Load pre-trained model for agent1
+    agent1.load_model("agent1_model.pth")
+
+    # Evaluate the model against a random player
+    print("\n=== Evaluating AI against Random Player ===\n")
+    num_games = 100
+    agent1_wins = 0
+    random_player_wins = 0
+
+    for game in range(num_games):
+        state = env.reset()
+        done = False
+
+        while not done:
+            current_agent = agent1 if env.current_player == 1 else "Random Player"
+            if current_agent == agent1:  # AI player
+                action = agent1.act(state)
+            else:  # Random player
+                player_key = f"Player {env.current_player}"
+                player_cards = env.distributed_cards[player_key]
+                playable_cards, _ = get_playable_cards(player_cards, env.seven_rule_active)
+                action = random.randrange(len(playable_cards)) if playable_cards else 0
+
+            next_state, reward, done = env.step(action)
+            state = next_state
+
+        # Determine the winner
+        winner = "Player 1" if env.current_player == 1 else "Random Player"
+        if winner == "Player 1":
+            agent1_wins += 1
+        else:
+            random_player_wins += 1
+
+        print(f"Game {game + 1}/{num_games} finished. Winner: {winner}")
+
+    print(f"\n=== Evaluation Results ===")
+    print(f"AI Wins: {agent1_wins} out of {num_games}")
+    print(f"Random Player Wins: {random_player_wins} out of {num_games}")
